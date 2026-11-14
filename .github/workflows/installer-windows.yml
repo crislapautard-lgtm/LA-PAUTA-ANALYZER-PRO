@@ -1,0 +1,95 @@
+
+name: Build La Pauta Analyzer Pro Installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --yes --no-progress
+
+      - name: Configure project
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build VST3
+        run: cmake --build build --config Release --parallel
+
+      - name: Find and stage VST3
+        shell: pwsh
+        run: |
+          $matches = Get-ChildItem -Path "build" -Directory -Filter "*.vst3" -Recurse |
+            Where-Object { $_.Name -eq "La Pauta Analyzer Pro.vst3" }
+
+          if ($matches.Count -eq 0) {
+            Write-Host "No se encontró el VST3. Contenido de build:"
+            Get-ChildItem -Path "build" -Recurse |
+              Select-Object -ExpandProperty FullName
+            throw "No se encontró La Pauta Analyzer Pro.vst3"
+          }
+
+          $plugin = $matches | Select-Object -First 1
+
+          New-Item -ItemType Directory -Force `
+            -Path "installer/staging/La Pauta Analyzer Pro.vst3" | Out-Null
+
+          Copy-Item -Path "$($plugin.FullName)\*" `
+            -Destination "installer/staging/La Pauta Analyzer Pro.vst3" `
+            -Recurse -Force
+
+          if (!(Test-Path "installer/staging/La Pauta Analyzer Pro.vst3/Contents/x86_64-win")) {
+            throw "No se encontró el binario VST3 de Windows x64."
+          }
+
+      - name: Create output directory
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "output" | Out-Null
+
+      - name: Build Windows Setup EXE
+        shell: pwsh
+        run: |
+          $compiler = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+
+          if (!(Test-Path $compiler)) {
+            throw "No se encontró el compilador Inno Setup."
+          }
+
+          & $compiler "installer/LaPautaAnalyzerPro.iss"
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Falló la creación del instalador."
+          }
+
+      - name: Verify installer
+        shell: pwsh
+        run: |
+          if (!(Test-Path "output/LaPautaAnalyzerPro_Setup.exe")) {
+            throw "No se generó el instalador EXE."
+          }
+
+          Get-Item "output/LaPautaAnalyzerPro_Setup.exe" |
+            Format-List Name, Length
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: La-Pauta-Analyzer-Pro-Installer-Windows
+          path: output/LaPautaAnalyzerPro_Setup.exe
+          if-no-files-found: error
+          retention-days: 30
+          
