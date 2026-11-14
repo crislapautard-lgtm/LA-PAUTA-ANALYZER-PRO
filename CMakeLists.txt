@@ -1,61 +1,64 @@
 
-name: Build La Pauta Analyzer Pro Installer
+cmake_minimum_required(VERSION 3.22)
 
-on:
-  workflow_dispatch:
-  push:
-    branches: [ main, master ]
+project(LaPautaAnalyzerPro VERSION 1.0.0 LANGUAGES C CXX)
 
-jobs:
-  build-installer:
-    runs-on: windows-latest
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
+include(FetchContent)
 
-      - name: Install Inno Setup
-        shell: pwsh
-        run: choco install innosetup --yes --no-progress
+FetchContent_Declare(
+    JUCE
+    GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
+    GIT_TAG 8.0.4
+    GIT_SHALLOW ON
+)
 
-      - name: Configure
-        run: cmake -S . -B build -A x64
+FetchContent_MakeAvailable(JUCE)
 
-      - name: Build VST3
-        run: cmake --build build --config Release --parallel
+juce_add_plugin(LaPautaAnalyzerPro
+    COMPANY_NAME "La Pauta"
+    BUNDLE_ID com.lapauta.lapautaanalyzerpro
+    PLUGIN_MANUFACTURER_CODE LaPa
+    PLUGIN_CODE LpAn
+    FORMATS VST3
+    PRODUCT_NAME "La Pauta Analyzer Pro"
+    IS_SYNTH FALSE
+    NEEDS_MIDI_INPUT FALSE
+    NEEDS_MIDI_OUTPUT FALSE
+    IS_MIDI_EFFECT FALSE
+    COPY_PLUGIN_AFTER_BUILD FALSE
+    VST3_CATEGORIES Analyzer Fx
+)
 
-      - name: Stage VST3 bundle
-        run: cmake --install build --config Release --prefix installer/staging --component VST3
+target_sources(LaPautaAnalyzerPro PRIVATE
+    Source/PluginProcessor.cpp
+    Source/PluginProcessor.h
+    Source/PluginEditor.cpp
+    Source/PluginEditor.h
+    Source/AnalyzerComponent.h
+)
 
-      - name: Verify staged plugin
-        shell: pwsh
-        run: |
-          $plugin = "installer/staging/La Pauta Analyzer Pro.vst3"
+target_compile_definitions(LaPautaAnalyzerPro PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_VST3_CAN_REPLACE_VST2=0
+)
 
-          if (!(Test-Path $plugin)) {
-            Write-Error "No se encontró el plugin VST3: $plugin"
-            Get-ChildItem -Recurse build | Select-Object -ExpandProperty FullName
-            exit 1
-          }
+target_link_libraries(LaPautaAnalyzerPro
+    PRIVATE
+        juce::juce_audio_utils
+        juce::juce_dsp
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
 
-      - name: Create Windows installer
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path output | Out-Null
-
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer/LaPautaAnalyzerPro.iss"
-
-          if ($LASTEXITCODE -ne 0) {
-            exit $LASTEXITCODE
-          }
-
-      - name: Upload installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: La-Pauta-Analyzer-Pro-Windows-Installer
-          path: output/LaPautaAnalyzerPro_Setup.exe
-          if-no-files-found: error
-          retention-days: 30
-          
+install(
+    DIRECTORY
+    "${CMAKE_BINARY_DIR}/LaPautaAnalyzerPro_artefacts/$<CONFIG>/VST3/La Pauta Analyzer Pro.vst3"
+    DESTINATION "."
+    COMPONENT VST3
+)
