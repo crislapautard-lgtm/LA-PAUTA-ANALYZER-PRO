@@ -1,22 +1,25 @@
+
 cmake_minimum_required(VERSION 3.22)
 
-project(LaPautaAnalyzerPro VERSION 1.0.0)
+project(LaPautaAnalyzerPro VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
+
 FetchContent_Declare(
     JUCE
     GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
     GIT_TAG 8.0.4
     GIT_SHALLOW ON
 )
+
 FetchContent_MakeAvailable(JUCE)
 
-# Solo VST3 para Windows
 juce_add_plugin(LaPautaAnalyzerPro
     COMPANY_NAME "La Pauta"
+    BUNDLE_ID com.lapauta.lapautaanalyzerpro
     PLUGIN_MANUFACTURER_CODE LaPa
     PLUGIN_CODE LpAn
     FORMATS VST3
@@ -30,11 +33,11 @@ juce_add_plugin(LaPautaAnalyzerPro
 )
 
 target_sources(LaPautaAnalyzerPro PRIVATE
-    PluginProcessor.cpp
-    PluginProcessor.h
-    PluginEditor.cpp
-    PluginEditor.h
-    AnalyzerComponent.h
+    Source/PluginProcessor.cpp
+    Source/PluginProcessor.h
+    Source/PluginEditor.cpp
+    Source/PluginEditor.h
+    Source/AnalyzerComponent.h
 )
 
 target_compile_definitions(LaPautaAnalyzerPro PUBLIC
