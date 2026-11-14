@@ -55,3 +55,10 @@ target_link_libraries(LaPautaAnalyzerPro
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags
 )
+
+install(
+    DIRECTORY
+    "${CMAKE_BINARY_DIR}/LaPautaAnalyzerPro_artefacts/$<CONFIG>/VST3/La Pauta Analyzer Pro.vst3"
+    DESTINATION "."
+    COMPONENT VST3
+)
