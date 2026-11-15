@@ -1,10 +1,10 @@
-
 cmake_minimum_required(VERSION 3.22)
 
 project(LaPautaAnalyzerPro VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
 
@@ -55,3 +55,47 @@ target_link_libraries(LaPautaAnalyzerPro
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags
 )
+
+# JUCE creates a separate VST3 target. Install its actual generated bundle.
+if(NOT TARGET LaPautaAnalyzerPro_VST3)
+    message(FATAL_ERROR
+        "JUCE did not create LaPautaAnalyzerPro_VST3. "
+        "Check that FORMATS includes VST3 and JUCE configured correctly."
+    )
+endif()
+
+get_target_property(LAPAUTA_VST3_BUNDLE
+    LaPautaAnalyzerPro_VST3
+    JUCE_PLUGIN_ARTEFACT_FILE
+)
+
+if(NOT LAPAUTA_VST3_BUNDLE)
+    message(FATAL_ERROR
+        "JUCE_PLUGIN_ARTEFACT_FILE is missing on LaPautaAnalyzerPro_VST3."
+    )
+endif()
+
+install(
+    DIRECTORY "${LAPAUTA_VST3_BUNDLE}/"
+    DESTINATION "VST3/La Pauta Analyzer Pro.vst3"
+    COMPONENT LaPautaVST3
+)
+
+# CPack + NSIS generates the Windows Setup.exe.
+# NSIS must be installed on the build machine (e.g. GitHub Actions).
+set(CPACK_PACKAGE_NAME "LaPautaAnalyzerPro")
+set(CPACK_PACKAGE_VENDOR "La Pauta")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
+    "La Pauta Analyzer Pro - VST3 audio analyzer"
+)
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "La Pauta Analyzer Pro")
+set(CPACK_GENERATOR "NSIS")
+set(CPACK_NSIS_DISPLAY_NAME "La Pauta Analyzer Pro")
+set(CPACK_NSIS_PACKAGE_NAME "La Pauta Analyzer Pro")
+set(CPACK_NSIS_INSTALL_ROOT "$COMMONFILES64")
+set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+set(CPACK_NSIS_MODIFY_PATH OFF)
+set(CPACK_PACKAGE_FILE_NAME "LaPautaAnalyzerPro_Setup")
+
+include(CPack)
