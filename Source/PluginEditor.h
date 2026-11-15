@@ -7,16 +7,19 @@
 //==============================================================================
 // Ventana del plugin: tamaño estándar 10 cm x 8 cm, redimensionable.
 //==============================================================================
-class LaPautaAnalyzerAudioProcessorEditor : public juce::AudioProcessorEditor
+class LaPautaAnalyzerAudioProcessorEditor : public juce::AudioProcessorEditor,
+                                            private juce::Timer
 {
 public:
     explicit LaPautaAnalyzerAudioProcessorEditor (LaPautaAnalyzerAudioProcessor&);
-    ~LaPautaAnalyzerAudioProcessorEditor() override = default;
+    ~LaPautaAnalyzerAudioProcessorEditor() override;
 
     void paint (juce::Graphics&) override;
     void resized() override;
 
 private:
+    void timerCallback() override;
+
     LaPautaAnalyzerAudioProcessor& audioProcessor;
     AnalyzerComponent analyzer;
 

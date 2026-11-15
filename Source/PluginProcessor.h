@@ -48,9 +48,13 @@ public:
     // Copia las últimas n muestras (mono) para el analizador
     void copyLatest (float* dest, int n) const;
 
-    // Tamaño de la ventana (se guarda con el proyecto)
+    // Tamaño de la ventana (se guarda en un archivo propio y con el proyecto)
     std::atomic<int> editorWidth  { defaultWidth };
     std::atomic<int> editorHeight { defaultHeight };
+
+    void saveSizeToDisk() const;
+    static bool loadSizeFromDisk (int& w, int& h);
+    static juce::File getSizeFile();
 
 private:
     std::array<std::atomic<float>, (size_t) ringSize> ring;

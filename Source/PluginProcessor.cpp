@@ -9,6 +9,58 @@ LaPautaAnalyzerAudioProcessor::LaPautaAnalyzerAudioProcessor()
 {
     for (auto& s : ring)
         s.store (0.0f, std::memory_order_relaxed);
+
+    int w = 0, h = 0;
+    if (loadSizeFromDisk (w, h))
+    {
+        editorWidth.store (w);
+        editorHeight.store (h);
+    }
+}
+
+juce::File LaPautaAnalyzerAudioProcessor::getSizeFile()
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+               .getChildFile ("La Pauta")
+               .getChildFile ("Analyzer Pro")
+               .getChildFile ("size.xml");
+}
+
+void LaPautaAnalyzerAudioProcessor::saveSizeToDisk() const
+{
+    const int w = editorWidth.load();
+    const int h = editorHeight.load();
+
+    if (w < 252 || h < 201)
+        return;
+
+    auto file = getSizeFile();
+    file.getParentDirectory().createDirectory();
+
+    juce::XmlElement xml ("Size");
+    xml.setAttribute ("w", w);
+    xml.setAttribute ("h", h);
+    xml.writeTo (file);
+}
+
+bool LaPautaAnalyzerAudioProcessor::loadSizeFromDisk (int& w, int& h)
+{
+    auto file = getSizeFile();
+    if (! file.existsAsFile())
+        return false;
+
+    if (auto xml = juce::XmlDocument::parse (file))
+    {
+        if (xml->hasTagName ("Size"))
+        {
+            w = xml->getIntAttribute ("w", 0);
+            h = xml->getIntAttribute ("h", 0);
+
+            if (w >= 252 && w <= 1512 && h >= 201 && h <= 1208)
+                return true;
+        }
+    }
+    return false;
 }
 
 void LaPautaAnalyzerAudioProcessor::prepareToPlay (double, int)
@@ -83,6 +135,15 @@ void LaPautaAnalyzerAudioProcessor::getStateInformation (juce::MemoryBlock& dest
 
 void LaPautaAnalyzerAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
+    // Si el usuario ya guardó un tamaño propio, ese tiene prioridad
+    int dw = 0, dh = 0;
+    if (loadSizeFromDisk (dw, dh))
+    {
+        editorWidth.store (dw);
+        editorHeight.store (dh);
+        return;
+    }
+
     if (auto xml = getXmlFromBinary (data, sizeInBytes))
     {
         if (xml->hasTagName ("LaPautaAnalyzerPro"))
